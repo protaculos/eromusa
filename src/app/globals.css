@@ -1,0 +1,336 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0A0B14;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #161827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E2130;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2d3e;
+}
+
+/* Video placeholder animations */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-20px) rotate(10deg);
+    opacity: 0.3;
+  }
+}
+
+@keyframes float-slow-delayed {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-15px) rotate(-8deg);
+    opacity: 0.25;
+  }
+}
+
+@keyframes float-slow-delayed-2 {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-25px) rotate(12deg);
+    opacity: 0.2;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 4s ease-in-out infinite;
+}
+
+.animate-float-slow-delayed {
+  animation: float-slow-delayed 5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.animate-float-slow-delayed-2 {
+  animation: float-slow-delayed-2 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+/* Gradiente animado */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Video card floating animations */
+@keyframes float-1 {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0.3;
+  }
+}
+
+@keyframes float-2 {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-15px) scale(0.95);
+    opacity: 0.25;
+  }
+}
+
+@keyframes float-3 {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-25px) rotate(10deg);
+    opacity: 0.2;
+  }
+}
+
+.animate-float-1 {
+  animation: float-1 4s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: float-2 5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.animate-float-3 {
+  animation: float-3 6s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+.animate-float-1-delayed {
+  animation: float-1 4s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+/* ========================================
+   VIDEO CARD ANIMATIONS (NEW)
+   ======================================== */
+
+/* Cinematic Portrait - Golden shimmer */
+@keyframes shimmer-gold {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(200%) rotate(45deg); }
+}
+
+.animate-shimmer-gold::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer-gold 3s ease-in-out infinite;
+}
+
+/* Neon Dreams - Glow pulse */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.7), 0 0 60px rgba(6, 182, 212, 0.5);
+  }
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Vintage Vibes - Warm glow */
+@keyframes warm-glow {
+  0%, 100% {
+    background-position: 0% 50%;
+    filter: sepia(0.3) saturate(1.2);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: sepia(0.5) saturate(1.5);
+  }
+}
+
+.animate-warm-glow {
+  animation: warm-glow 4s ease-in-out infinite;
+  background-size: 200% 200%;
+}
+
+/* Elegant floating */
+@keyframes elegant-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+.animate-elegant-float {
+  animation: elegant-float 5s ease-in-out infinite;
+}
+
+/* Sparkle effect */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* ========================================
+   REACT-IMAGE-CROP STYLES
+   ======================================== */
+
+.ReactCrop {
+  background-color: #000;
+}
+
+.ReactCrop__crop-selection {
+  border: 2px solid #F97316 !important;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ReactCrop__drag-handler {
+  background-color: #F97316 !important;
+  border-color: #F97316 !important;
+}
+
+.ReactCrop__drag-handler-inner {
+  background-color: #F97316 !important;
+}
+
+/* ========================================
+   PULSE ANIMATIONS
+   ======================================== */
+
+@keyframes pulse-btn {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-pulse-btn {
+  animation: pulse-btn 2s ease-in-out infinite;
+}
+
+/* ========================================
+   LANGUAGE DROPDOWN SLIDE
+   ======================================== */
+
+@keyframes slide-lang {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scaleX(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes slide-lang-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+.animate-slide-lang {
+  animation: slide-lang 0.15s ease-out forwards;
+  transform-origin: right center;
+}
+
+@media (max-width: 639px) {
+  .animate-slide-lang {
+    animation: slide-lang-down 0.15s ease-out forwards;
+    transform-origin: top center;
+  }
+}
+
+/* ========================================
+   SELECTABLE ITEM EFFECT
+   ======================================== */
+
+.selectable-hover {
+  position: relative;
+}
+
+.selectable-hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.selectable-hover:hover::after {
+  border-color: rgba(249, 115, 22, 0.6);
+  box-shadow: inset 0 0 20px rgba(249, 115, 22, 0.1);
+}
+
+/* Close icon overlay on hover */
+.selectable-hover .close-overlay {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.selectable-hover:hover .close-overlay {
+  opacity: 1;
+}
