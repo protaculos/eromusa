@@ -460,7 +460,50 @@ NEXT_PUBLIC_IMGBB_KEY=1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a
 
 ---
 
-## 11. Fluxo de Trabalho para Deploy
+## 11. Deploy - GitHub + Vercel
+
+### Status (Julho 2026)
+- **GitHub**: https://github.com/protaculos/eromusa
+- **Branch**: `main`
+- **Vercel**: Configurado e aguardando domínio customizado
+
+### Fluxo de Deploy Automático
+```
+1. Desenvolvedor faz mudanças no código
+2. git add . && git commit -m "descrição"
+3. git push
+4. Vercel detecta push → compila → publica automaticamente
+```
+
+### Para Atualizar o Site
+1. Fazer as mudanças no código
+2. Rodar: `git add . && git commit -m "descrição" && git push`
+3. Aguardar 1-2 minutos
+4. Site atualizado automaticamente
+
+### Variáveis de Ambiente no Vercel
+| Name | Description |
+|------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública do Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave admin do Supabase |
+| `LEAKIFY_API_KEY` | Chave da API LeakifyHub |
+| `VEXUTOOPIA_API_KEY` | Chave da API Vexutopia |
+| `VEXUTOOPIA_WEBHOOK_SECRET` | Segredo para webhook |
+| `NEXT_PUBLIC_BASE_URL` | URL do site (atualizar após ter domínio) |
+
+### IMPORTANTE: Webhook da Vexutopia
+Após configurar o domínio no Vercel:
+1. Configurar webhook no painel Vexutopia: `https://seudominio.com/api/webhooks/vexutopia`
+2. Atualizar `NEXT_PUBLIC_BASE_URL` no Vercel com o domínio correto
+
+### Endpoint de Reconciliação (Backup)
+`POST /api/payments/reconcile` - Verifica pagamentos pendentes e adiciona créditos automaticamente.
+Chamado automaticamente no AuthContext quando usuário faz login.
+
+---
+
+## 12. Fluxo de Trabalho para Deploy
 
 1. **Supabase Dashboard**:
    - Authentication → URL Configuration → Site URL = produção
@@ -480,7 +523,7 @@ NEXT_PUBLIC_IMGBB_KEY=1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a
 
 ---
 
-## 12. Features Implementadas - Checklist
+## 13. Features Implementadas - Checklist
 
 ### Core
 - [x] Navbar responsiva com dropdown
@@ -532,7 +575,7 @@ NEXT_PUBLIC_IMGBB_KEY=1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a
 
 ---
 
-## 13. Pending Items
+## 14. Pending Items
 
 ### Alta Prioridade
 - [x] Implementar processamento de pagamento (Vexutopia)
@@ -550,7 +593,7 @@ NEXT_PUBLIC_IMGBB_KEY=1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a
 
 ---
 
-## 14. Notas Importantes
+## 15. Notas Importantes
 
 1. **Next.js App Router**: Estrutura `src/app/`
 2. **TypeScript**: Extensão `.tsx`
@@ -564,7 +607,7 @@ NEXT_PUBLIC_IMGBB_KEY=1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a
 
 ---
 
-## 15. Contatos
+## 16. Contatos
 
 - **Suporte**: sac@eromusa.com
 - **Privacidade**: privacy@eromusa.com

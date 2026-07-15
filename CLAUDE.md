@@ -467,4 +467,47 @@ NEXT_PUBLIC_IMGBB_KEY=...
 
 ---
 
+## Deployment - GitHub + Vercel
+
+### Configuração Atual (Julho 2026)
+- **GitHub**: https://github.com/protaculos/eromusa
+- **Branch principal**: `main`
+- **Vercel**: Conectado ao repositório GitHub
+
+### Fluxo de Deploy Automático
+```
+Desenvolvedor faz mudanças no código
+    ↓
+git add . && git commit -m "descrição"
+    ↓
+git push
+    ↓
+Vercel detecta push → compila → publica automaticamente
+```
+
+### Para Atualizar o Site
+1. Desenvolvedor faz as mudanças no código
+2. Roda: `git add . && git commit -m "descrição" && git push`
+3. Aguarda 1-2 minutos
+4. Site atualizado em: `https://eromusa.vercel.app` (ou domínio customizado)
+
+### Variáveis de Ambiente no Vercel
+Ao fazer deploy, configurar no Vercel:
+| Name | Description |
+|------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública do Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave admin do Supabase |
+| `LEAKIFY_API_KEY` | Chave da API LeakifyHub |
+| `VEXUTOOPIA_API_KEY` | Chave da API Vexutopia |
+| `VEXUTOOPIA_WEBHOOK_SECRET` | Segredo para webhook |
+| `NEXT_PUBLIC_BASE_URL` | URL do site (ex: https://seudominio.com) |
+
+### IMPORTANTE: Webhook da Vexutopia
+Após configurar o domínio no Vercel:
+1. Configurar webhook no painel Vexutopia: `https://seudominio.com/api/webhooks/vexutopia`
+2. Atualizar `NEXT_PUBLIC_BASE_URL` no Vercel com o domínio correto
+
+---
+
 *Última atualização: 15/07/2026*
