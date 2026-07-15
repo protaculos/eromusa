@@ -60,11 +60,11 @@ export async function POST(req: NextRequest) {
         amount: plan.price.toFixed(2),
         currency: "USD",
         return_url: `${baseUrl}/pricing`,
-        customer_email: user.email,
         webhook_url: `${baseUrl}/api/webhooks/vexutopia`,
         metadata: {
           user_id: user.id,
           plan_id: plan.id,
+          customer_email: user.email || "",
         },
       });
       console.log("Vexutopia payment created:", payment);
