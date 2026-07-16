@@ -66,11 +66,15 @@ async function handlePaymentCompleted(payload: WebhookPayload) {
   }
 
   // Add credits to user
-  const { data: userData } = await supabaseAdmin
+  const { data: userData, error: userError } = await supabaseAdmin
     .from("users")
     .select("credits")
     .eq("id", localPayment.user_id)
-    .single();
+    .maybeSingle();
+
+  if (userError) {
+    console.error("Error fetching user for credits:", userError);
+  }
 
   if (userData) {
     const newCredits = (userData.credits || 0) + localPayment.credits;
@@ -80,6 +84,19 @@ async function handlePaymentCompleted(payload: WebhookPayload) {
       .from("users")
       .update({ credits: newCredits })
       .eq("id", localPayment.user_id);
+  } else {
+    console.log("User profile not found, creating and adding credits for:", localPayment.user_id);
+    // Create user profile if it doesn't exist and set initial credits
+    const { error: createError } = await supabaseAdmin
+      .from("users")
+      .insert({
+        id: localPayment.user_id,
+        credits: localPayment.credits,
+      });
+
+    if (createError) {
+      console.error("Error creating user profile during webhook:", createError);
+    }
   }
 
   // Mark as completed
