@@ -82,14 +82,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchCredits = async (userId: string) => {
-    console.log("fetchCredits called for user:", userId);
-    const { data, error } = await supabase
-      .from("users")
-      .select("credits")
-      .eq("id", userId)
-      .single();
-    console.log("fetchCredits result:", data, "error:", error);
-    if (data) setCredits(data.credits ?? 0);
+    console.log("AuthContext: Attempting to fetch credits for user ID:", userId);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.error("AuthContext: Error fetching credits from Supabase:", error);
+      } else {
+        console.log("AuthContext: Credits fetched successfully from DB:", data?.credits);
+        if (data) {
+          setCredits(data.credits ?? 0);
+        }
+      }
+    } catch (err) {
+      console.error("AuthContext: Unexpected error in fetchCredits:", err);
+    }
   };
 
   const signIn = async (
