@@ -82,24 +82,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchCredits = async (userId: string) => {
-    console.log("AuthContext: Attempting to fetch credits for user ID:", userId);
+    console.log("AuthContext: Fetching credits via API for user ID:", userId);
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("credits")
-        .eq("id", userId)
-        .single();
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
 
-      if (error) {
-        console.error("AuthContext: Error fetching credits from Supabase:", error);
-      } else {
-        console.log("AuthContext: Credits fetched successfully from DB:", data?.credits);
-        if (data) {
-          setCredits(data.credits ?? 0);
-        }
+      if (!token) {
+        console.error("AuthContext: No access token available for credit fetch");
+        return;
       }
-    } catch (err) {
-      console.error("AuthContext: Unexpected error in fetchCredits:", err);
+
+      const response = await fetch("/api/user/credits", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch credits");
+      }
+
+      const data = await response.json();
+      console.log("AuthContext: Credits received from API:", data.credits);
+      setCredits(data.credits ?? 0);
+    } catch (err: any) {
+      console.error("AuthContext: Unexpected error in fetchCredits API:", err.message);
     }
   };
 
