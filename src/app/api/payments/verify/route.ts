@@ -36,11 +36,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (!localPayment) {
-      console.log("Payment not found for ID:", paymentId);
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
-
-    console.log("Found payment:", localPayment.id, "status:", localPayment.status);
 
     // Already completed - return cached
     if (localPayment.status === "completed") {
@@ -61,7 +58,6 @@ export async function GET(req: NextRequest) {
 
     // Check status from Vexutopia
     const vexPayment = await getPayment(apiKey, localPayment.vexutopia_id);
-    console.log("Vexutopia payment status:", vexPayment.status);
 
     // Update status based on Vexutopia response
     if (vexPayment.status === "completed" && localPayment.status === "pending") {
@@ -74,7 +70,6 @@ export async function GET(req: NextRequest) {
 
       if (userData) {
         const newCredits = (userData.credits || 0) + localPayment.credits;
-        console.log("Adding credits:", localPayment.credits, "to user", localPayment.user_id, ". Total:", newCredits);
 
         await supabaseAdmin
           .from("users")
@@ -83,7 +78,6 @@ export async function GET(req: NextRequest) {
       }
 
       await completePayment(localPayment.vexutopia_id, supabaseAdmin);
-      console.log(`Payment ${localPayment.vexutopia_id} completed. Added ${localPayment.credits} credits.`);
     } else if (vexPayment.status === "failed" && localPayment.status === "pending") {
       await updatePaymentInfo(localPayment.vexutopia_id, { status: "failed" }, supabaseAdmin);
     } else if (vexPayment.payment_method) {

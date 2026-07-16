@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Route: /api/user/credits
+ * Purpose: Return the exact credit balance of the authenticated user from the database.
+ * Principle: Database is the ONLY source of truth. No automatic profile creation or bonuses here.
+ */
 export async function GET(req: Request) {
   try {
     const supabaseAdmin = createClient(
@@ -20,39 +25,26 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Try to fetch credits
+    // Fetch ONLY the credits column from the users table for this specific ID
     const { data, error } = await supabaseAdmin
       .from("users")
       .select("credits")
       .eq("id", user.id)
-      .maybeSingle(); // Use maybeSingle instead of single to avoid the "coerce" error
+      .maybeSingle();
 
     if (error) {
-      console.error("Error fetching credits:", error);
-      throw error;
+      console.error("Database error fetching credits:", error);
+      return NextResponse.json({ error: "Database fetch error" }, { status: 500 });
     }
 
-    if (!data) {
-      console.log("User profile not found, creating one for ID:", user.id);
-      // Automatically create user profile if it doesn't exist
-      const { error: createError } = await supabaseAdmin
-        .from("users")
-        .insert({
-          id: user.id,
-          email: user.email,
-          credits: 0,
-        });
+    // If no profile exists or credits is null, return 0.
+    // We do NOT create a profile here to avoid side-effects during a GET request.
+    const balance = data?.credits ?? 0;
 
-      if (createError) {
-        console.error("Error creating user profile:", createError);
-        return NextResponse.json({ credits: 0 });
-      }
-      return NextResponse.json({ credits: 0 });
-    }
+    return NextResponse.json({ credits: balance });
 
-    return NextResponse.json({ credits: data.credits ?? 0 });
   } catch (error: any) {
-    console.error("Error fetching credits API:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Unexpected error in /api/user/credits:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

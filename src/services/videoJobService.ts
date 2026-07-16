@@ -28,8 +28,30 @@ export async function createVideoJob(
     credits: number;
   },
   croppedImageBase64: string
-): Promise<VideoJob | null> {
+): Promise<{ success: boolean; job?: VideoJob; error?: string }> {
   try {
+    // Deduct credits first
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    if (!token) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const deductResponse = await fetch("/api/video-credits/deduct", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ credits_cost: template.credits }),
+    });
+
+    if (!deductResponse.ok) {
+      const errorData = await deductResponse.json();
+      return { success: false, error: errorData.error || "Failed to deduct credits" };
+    }
+
     // Create job record in database - set as processing immediately
     const { data, error } = await supabase
       .from("video_jobs")
@@ -46,7 +68,7 @@ export async function createVideoJob(
 
     if (error) {
       console.error("Error creating video job:", error);
-      return null;
+      return { success: false, error: "Failed to create video job" };
     }
 
     // Fire API call in background (don't await - let the gallery show processing immediately)
@@ -68,10 +90,10 @@ export async function createVideoJob(
         .then();
     });
 
-    return { ...data, status: "processing" } as VideoJob;
+    return { success: true, job: { ...data, status: "processing" } as VideoJob };
   } catch (error) {
     console.error("Error creating video job:", error);
-    return null;
+    return { success: false, error: "An unexpected error occurred" };
   }
 }
 

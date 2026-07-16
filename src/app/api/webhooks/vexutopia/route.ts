@@ -18,17 +18,14 @@ export async function POST(req: NextRequest) {
     }
 
     const payload: WebhookPayload = JSON.parse(rawBody);
-    console.log("Webhook received:", payload.event, payload.id);
 
     switch (payload.event) {
       case "payment.completed":
         await handlePaymentCompleted(payload);
         break;
       case "payment.failed":
-        console.log(`Payment failed: ${payload.id}`);
         break;
       case "payment.refunded":
-        console.log(`Payment refunded: ${payload.id}`);
         break;
     }
 
@@ -40,66 +37,67 @@ export async function POST(req: NextRequest) {
 }
 
 async function handlePaymentCompleted(payload: WebhookPayload) {
-  // Create admin client to bypass RLS
-  const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+  try {
+    // Create admin client to bypass RLS
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // 1. Find payment in our database to know which user gets the credits
+    const localPayment = await getPaymentByVexutopiaId(payload.id, supabaseAdmin);
+
+    if (!localPayment) {
+      console.error(`[Webhook] Payment not found in local DB: ${payload.id}`);
+      return;
     }
-  );
 
-  // Find payment in our database
-  const localPayment = await getPaymentByVexutopiaId(payload.id, supabaseAdmin);
+    if (localPayment.status !== "pending") {
+      console.log(`[Webhook] Payment ${payload.id} already processed (status: ${localPayment.status}). Skipping.`);
+      return;
+    }
 
-  if (!localPayment) {
-    console.error("Payment not found in database:", payload.id);
-    return;
-  }
-
-  if (localPayment.status !== "pending") {
-    console.log("Payment already processed:", payload.id, localPayment.status);
-    return;
-  }
-
-  // Add credits to user
-  const { data: userData, error: userError } = await supabaseAdmin
-    .from("users")
-    .select("credits")
-    .eq("id", localPayment.user_id)
-    .maybeSingle();
-
-  if (userError) {
-    console.error("Error fetching user for credits:", userError);
-  }
-
-  if (userData) {
-    const newCredits = (userData.credits || 0) + localPayment.credits;
-    console.log("Adding credits via webhook:", localPayment.credits, "to user", localPayment.user_id, ". Total:", newCredits);
-
-    await supabaseAdmin
+    // 2. Fetch current credits (Source of Truth)
+    const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
-      .update({ credits: newCredits })
+      .select("credits")
+      .eq("id", localPayment.user_id)
+      .maybeSingle();
+
+    if (userError) {
+      console.error(`[Webhook] Error fetching user ${localPayment.user_id} for credits:`, userError);
+      return;
+    }
+
+    // 3. Calculate new balance (Current + Purchased)
+    const currentBalance = userData?.credits || 0;
+    const addedCredits = localPayment.credits || 0;
+    const newBalance = currentBalance + addedCredits;
+
+    console.log(`[Webhook] Adding credits to user ${localPayment.user_id}: ${currentBalance} + ${addedCredits} = ${newBalance}`);
+
+    // 4. Update balance in database
+    const { error: updateError } = await supabaseAdmin
+      .from("users")
+      .update({ credits: newBalance })
       .eq("id", localPayment.user_id);
-  } else {
-    console.log("User profile not found, creating and adding credits for:", localPayment.user_id);
-    // Create user profile if it doesn't exist and set initial credits
-    const { error: createError } = await supabaseAdmin
-      .from("users")
-      .insert({
-        id: localPayment.user_id,
-        credits: localPayment.credits,
-      });
 
-    if (createError) {
-      console.error("Error creating user profile during webhook:", createError);
+    if (updateError) {
+      console.error(`[Webhook] Error updating credits for user ${localPayment.user_id}:`, updateError);
+      return;
     }
-  }
 
-  // Mark as completed
-  await completePayment(payload.id, supabaseAdmin);
-  console.log(`Webhook: Payment ${payload.id} completed. Added ${localPayment.credits} credits.`);
+    // 5. Mark payment as completed
+    await completePayment(payload.id, supabaseAdmin);
+    console.log(`[Webhook] Successfully processed payment ${payload.id} and added ${addedCredits} credits.`);
+
+  } catch (error) {
+    console.error("[Webhook] Critical error in handlePaymentCompleted:", error);
+  }
 }

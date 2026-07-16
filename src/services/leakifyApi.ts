@@ -1,5 +1,10 @@
 const API_BASE_URL = "https://api.leakifyhub.fun/api/v1";
-const API_KEY = "sk_test_c1c729cd477db89b204474094579958e";
+
+// API key must be set via LEAKIFY_API_KEY environment variable
+const API_KEY = process.env.LEAKIFY_API_KEY;
+if (!API_KEY) {
+  throw new Error("LEAKIFY_API_KEY environment variable is not set");
+}
 
 export interface Style {
   id: string;

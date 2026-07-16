@@ -47,7 +47,7 @@ export default function VideoCreateModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
-  const { user, credits } = useAuth();
+  const { user, credits, refreshCredits } = useAuth();
 
   // Crop modal states
   const [showCropModal, setShowCropModal] = useState(false);
@@ -377,20 +377,23 @@ export default function VideoCreateModal({
     setCreateError(null);
 
     try {
-      const job = await createVideoJob(user.id, template, selectedImage);
+      const result = await createVideoJob(user.id, template, selectedImage);
 
-      if (job) {
+      if (result.success && result.job) {
+        // Refresh credits to update navbar
+        await refreshCredits();
+
         // Dispatch event for gallery to listen
         window.dispatchEvent(
           new CustomEvent("eromusa-job-created", {
-            detail: { jobId: job.id, job },
+            detail: { jobId: result.job!.id, job: result.job },
           })
         );
 
         // Navigate to gallery - loading state stays until redirect
         window.location.href = "/gallery";
       } else {
-        setCreateError("Failed to create video. Please try again.");
+        setCreateError(result.error || "Failed to create video. Please try again.");
         setIsCreating(false);
       }
     } catch (error) {

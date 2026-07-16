@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
     const { data: pendingPayments, error: queryError } = await query;
 
     if (queryError) {
-      console.error("Error fetching pending payments:", queryError);
       return NextResponse.json(
         { error: "Failed to fetch pending payments" },
         { status: 500 }
@@ -71,8 +70,6 @@ export async function POST(req: NextRequest) {
         payments: [],
       });
     }
-
-    console.log(`Found ${pendingPayments.length} pending payment(s) to reconcile`);
 
     const apiKey = process.env.VEXUTOOPIA_API_KEY;
     if (!apiKey) {
@@ -93,8 +90,6 @@ export async function POST(req: NextRequest) {
     // Process each pending payment
     for (const payment of pendingPayments) {
       try {
-        console.log(`Checking payment ${payment.vexutopia_id}...`);
-
         // Get current status from Vexutopia
         const vexPayment = await getPayment(apiKey, payment.vexutopia_id);
 
@@ -108,9 +103,6 @@ export async function POST(req: NextRequest) {
 
           if (userData) {
             const newCredits = (userData.credits || 0) + payment.credits;
-            console.log(
-              `Adding ${payment.credits} credits to user ${payment.user_id}. Total: ${newCredits}`
-            );
 
             await supabaseAdmin
               .from("users")
@@ -135,7 +127,6 @@ export async function POST(req: NextRequest) {
 
           // Mark payment as completed
           await completePayment(payment.vexutopia_id, supabaseAdmin);
-          console.log(`Payment ${payment.vexutopia_id} reconciled successfully`);
         } else if (vexPayment.status === "failed") {
           await updatePaymentInfo(
             payment.vexutopia_id,
@@ -170,10 +161,6 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (paymentError) {
-        console.error(
-          `Error processing payment ${payment.vexutopia_id}:`,
-          paymentError
-        );
         results.push({
           vexutopia_id: payment.vexutopia_id,
           status: "error",
@@ -188,8 +175,6 @@ export async function POST(req: NextRequest) {
       (r) => r.status === "completed" && r.credits_added > 0
     ).length;
 
-    console.log(`Reconciliation complete. Processed: ${processed} payment(s)`);
-
     return NextResponse.json({
       success: true,
       total_pending: pendingPayments.length,
@@ -197,7 +182,6 @@ export async function POST(req: NextRequest) {
       payments: results,
     });
   } catch (error) {
-    console.error("Reconciliation error:", error);
     return NextResponse.json(
       { error: "Failed to reconcile payments" },
       { status: 500 }

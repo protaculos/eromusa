@@ -50,10 +50,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get("origin") || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get("origin");
+
+    if (!baseUrl) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
 
     // Create payment with Vexutopia
-    console.log("Creating payment with Vexutopia...");
     let payment;
     try {
       payment = await createPayment(apiKey, {
@@ -67,7 +70,6 @@ export async function POST(req: NextRequest) {
           customer_email: user.email || "",
         },
       });
-      console.log("Vexutopia payment created:", payment);
     } catch (vexError) {
       console.error("Vexutopia API error:", vexError);
       return NextResponse.json(
@@ -77,7 +79,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Save payment record to database (using admin client to bypass RLS)
-    console.log("Saving payment record to database...");
     const paymentRecord = await createPaymentRecordWithClient(supabaseAdmin, {
       userId: user.id,
       vexutopiaId: payment.id,
@@ -88,14 +89,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!paymentRecord) {
-      console.error("Failed to save payment record - see logs above");
       return NextResponse.json(
         { error: "Failed to save payment record" },
         { status: 500 }
       );
     }
-
-    console.log("Payment record saved successfully:", paymentRecord);
 
     return NextResponse.json({
       success: true,

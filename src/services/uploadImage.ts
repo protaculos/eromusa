@@ -36,11 +36,9 @@ export async function uploadImageToHost(base64Image: string): Promise<string> {
 }
 
 function getImgbbKey(): string {
-  // Try environment variable first, then fallback
-  // Get your free key at https://api.imgbb.com
-  if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_IMGBB_KEY) {
-    return process.env.NEXT_PUBLIC_IMGBB_KEY;
+  const key = process.env.NEXT_PUBLIC_IMGBB_KEY;
+  if (!key) {
+    throw new Error("NEXT_PUBLIC_IMGBB_KEY environment variable is not set");
   }
-  // Default public key (limited usage)
-  return "1b7a1b7a1b7a1b7a1b7a1b7a1b7a1b7a";
+  return key;
 }

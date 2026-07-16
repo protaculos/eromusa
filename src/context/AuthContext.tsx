@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
-        console.log("AuthContext: Initial session check:", initialSession?.user?.email);
 
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
@@ -57,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await reconcilePendingPayments();
         }
       } catch (error) {
-        console.error("AuthContext: Error initializing auth:", error);
+        console.error("Error initializing auth:", error);
       } finally {
         setLoading(false);
       }
@@ -67,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("AuthContext: onAuthStateChange event:", event, "session:", session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -82,13 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchCredits = async (userId: string) => {
-    console.log("AuthContext: Fetching credits via API for user ID:", userId);
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
       if (!token) {
-        console.error("AuthContext: No access token available for credit fetch");
         return;
       }
 
@@ -104,10 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      console.log("AuthContext: Credits received from API:", data.credits);
       setCredits(data.credits ?? 0);
     } catch (err: any) {
-      console.error("AuthContext: Unexpected error in fetchCredits API:", err.message);
+      console.error("Error fetching credits:", err.message);
     }
   };
 
@@ -189,20 +184,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshCredits = async () => {
-    console.log("refreshCredits called");
-    // Try to get user from state first, or from supabase directly
     const userId = user?.id;
     if (userId) {
-      console.log("Fetching credits for user:", userId);
       await fetchCredits(userId);
     } else {
-      // Try to get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        console.log("Fetching credits from session:", session.user.id);
         await fetchCredits(session.user.id);
-      } else {
-        console.log("No user found for refreshCredits");
       }
     }
   };
@@ -224,8 +212,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         if (data.processed > 0) {
-          console.log(`Reconciled ${data.processed} pending payment(s)`);
-          // Refresh credits after reconciliation
           await refreshCredits();
         }
       }

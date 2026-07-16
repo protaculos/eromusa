@@ -6,10 +6,14 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const API_BASE_URL = "https://api.leakifyhub.fun/api/v1";
-const API_KEY = process.env.LEAKIFY_API_KEY || "sk_test_c1c729cd477db89b204474094579958e";
 
 export async function POST(req: NextRequest) {
   try {
+    const API_KEY = process.env.LEAKIFY_API_KEY;
+    if (!API_KEY) {
+      return NextResponse.json({ error: "Leakify API key not configured" }, { status: 500 });
+    }
+
     const body = await req.json();
     const { job_id, style_id, image_base64 } = body;
 
