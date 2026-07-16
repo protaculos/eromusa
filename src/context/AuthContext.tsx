@@ -43,25 +43,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchCredits(session.user.id);
-        // Reconcile pending payments on initial load if user is logged in
-        reconcilePendingPayments();
+    const initializeAuth = async () => {
+      setLoading(true);
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        console.log("AuthContext: Initial session check:", initialSession?.user?.email);
+
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        if (initialSession?.user) {
+          await fetchCredits(initialSession.user.id);
+          await reconcilePendingPayments();
+        }
+      } catch (error) {
+        console.error("AuthContext: Error initializing auth:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log("AuthContext: onAuthStateChange event:", event, "session:", session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchCredits(session.user.id);
-          // Reconcile pending payments on login
-          reconcilePendingPayments();
+          await fetchCredits(session.user.id);
+          await reconcilePendingPayments();
         }
         setLoading(false);
       }

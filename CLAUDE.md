@@ -491,6 +491,12 @@ Vercel detecta push → compila → publica automaticamente
 3. Aguarda 1-2 minutos
 4. Site atualizado em: `https://eromusa.vercel.app` (ou domínio customizado)
 
+### Solução de Problemas de Build (Vercel)
+- **Erro de Export Default**: Se o build falhar com "found pages without a React Component as default export", certifique-se de que todos os arquivos em `src/pages/` ou `app/` possuem um `export default function ComponentName() { ... }`. Arquivos vazios causam falha no build.
+
+### Plugins e Ferramentas
+- Para adicionar plugins da Vercel: `npx plugins add vercel/vercel-plugin`
+
 ### Variáveis de Ambiente no Vercel
 Ao fazer deploy, configurar no Vercel:
 | Name | Description |
