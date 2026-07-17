@@ -97,6 +97,7 @@ function PricingContent() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [waitingPayment, setWaitingPayment] = useState(false);
   const { user, refreshCredits } = useAuth();
 
   // Handle return from payment
@@ -195,7 +196,17 @@ function PricingContent() {
       if (data.checkout_url) {
         sessionStorage.setItem("pending_payment_id", data.payment_id);
         sessionStorage.setItem("pending_internal_id", data.internal_id);
-        window.location.href = data.checkout_url;
+
+        // Abre em nova aba em vez de redirecionar
+        const newWindow = window.open(data.checkout_url, "_blank");
+        if (newWindow) {
+          setWaitingPayment(true);
+          setShowPaymentModal(false);
+          setPaymentLoading(false);
+        } else {
+          // Popup bloqueado — fallback: redireciona
+          window.location.href = data.checkout_url;
+        }
       } else {
         throw new Error("No checkout URL returned");
       }
@@ -205,6 +216,29 @@ function PricingContent() {
       setPaymentLoading(false);
     }
   };
+
+  // Detecta quando o usuário volta da aba de pagamento
+  useEffect(() => {
+    if (!waitingPayment) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const internalId = sessionStorage.getItem("pending_internal_id");
+        const vexutopiaId = sessionStorage.getItem("pending_payment_id");
+        const paymentId = internalId || vexutopiaId;
+
+        if (paymentId) {
+          verifyPayment(paymentId);
+          sessionStorage.removeItem("pending_payment_id");
+          sessionStorage.removeItem("pending_internal_id");
+          setWaitingPayment(false);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [waitingPayment]);
 
   return (
     <div className="pt-32 sm:pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -233,6 +267,22 @@ function PricingContent() {
               <span className="font-semibold text-white">Verifying Payment...</span>
             </div>
             <p className="text-sm text-text-secondary">Please wait while we confirm your payment.</p>
+          </div>
+        )}
+
+        {/* Waiting for Payment */}
+        {waitingPayment && (
+          <div className="mb-8 p-4 rounded-xl bg-card border border-border text-center">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <svg className="w-5 h-5 animate-spin text-accent-orange" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="font-semibold text-white">Waiting for Payment...</span>
+            </div>
+            <p className="text-sm text-text-secondary">
+              Complete the payment in the new tab. This page will update automatically when you return.
+            </p>
           </div>
         )}
 
