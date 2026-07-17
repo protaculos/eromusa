@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const API_BASE_URL = "https://api.leakifyhub.fun/api/v1";
+
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(base64Data, "base64");
     const fileName = `uploads/${job_id}.jpg`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabase().storage
       .from("images")
       .upload(fileName, buffer, {
         contentType: "image/jpeg",
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
       throw new Error("Failed to upload image");
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = getSupabase().storage
       .from("images")
       .getPublicUrl(fileName);
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
     if (!leakifyRes.ok) {
       const errorData = await leakifyRes.json().catch(() => ({}));
       console.error("LeakifyHub API error:", leakifyRes.status, errorData);
-      await supabase
+      await getSupabase()
         .from("video_jobs")
         .update({ status: "failed", updated_at: new Date().toISOString() })
         .eq("id", job_id);
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!videoUrl) {
-      await supabase
+      await getSupabase()
         .from("video_jobs")
         .update({ status: "failed", updated_at: new Date().toISOString() })
         .eq("id", job_id);
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Save result
-    await supabase
+    await getSupabase()
       .from("video_jobs")
       .update({
         status: "completed",
@@ -132,7 +134,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Missing job_id" }, { status: 400 });
     }
 
-    const { data: job } = await supabase
+    const { data: job } = await getSupabase()
       .from("video_jobs")
       .select("*")
       .eq("id", jobId)
