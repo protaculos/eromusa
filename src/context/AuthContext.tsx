@@ -36,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   reconcilePendingPayments: async () => {},
 });
 
+// Version: 2.0.1 - Force Refresh Trigger
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
