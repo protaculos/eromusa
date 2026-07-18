@@ -47,7 +47,7 @@ export default function VideoCreateModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
-  const { user, credits, refreshCredits } = useAuth();
+  const { user, credits, refreshCredits, deductCredits } = useAuth();
 
   // Crop modal states
   const [showCropModal, setShowCropModal] = useState(false);
@@ -380,7 +380,10 @@ export default function VideoCreateModal({
       const result = await createVideoJob(user.id, template, selectedImage);
 
       if (result.success && result.job) {
-        // Refresh credits to update navbar
+        // Deduct credits locally for instant UI update
+        deductCredits(template.credits);
+
+        // Refresh credits from DB to sync
         await refreshCredits();
 
         // Dispatch event for gallery to listen

@@ -18,6 +18,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshCredits: () => Promise<void>;
   reconcilePendingPayments: () => Promise<void>;
+  addCredits: (amount: number) => void;
+  deductCredits: (amount: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,15 +36,30 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   refreshCredits: async () => {},
   reconcilePendingPayments: async () => {},
+  addCredits: () => {},
+  deductCredits: () => {},
 });
 
-// Version: 2.0.1 - Force Refresh Trigger
+// Version: 3.0.0 - Local credits with DB sync
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
-  const channelRef = useRef<any>(null);
+
+  // --- Local credit helpers (sessionStorage for persistence across refreshes) ---
+  const getLocalCredits = (): number => {
+    if (typeof window === "undefined") return 0;
+    const stored = sessionStorage.getItem("eromusa-credits");
+    return stored ? parseInt(stored, 10) : 0;
+  };
+
+  const setLocalCredits = (value: number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("eromusa-credits", String(value));
+    }
+    setCredits(value);
+  };
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -54,6 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
+          // First show local credits (instant), then sync from DB
+          const localCreds = getLocalCredits();
+          if (localCreds > 0) {
+            setCredits(localCreds);
+          }
           await fetchCredits(initialSession.user.id);
           await reconcilePendingPayments();
         }
@@ -71,8 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          // Show local credits instantly, then sync from DB
+          const localCreds = getLocalCredits();
+          if (localCreds > 0) {
+            setCredits(localCreds);
+          }
           await fetchCredits(session.user.id);
           await reconcilePendingPayments();
+        } else {
+          // User logged out — clear local credits
+          sessionStorage.removeItem("eromusa-credits");
+          setCredits(0);
         }
         setLoading(false);
       }
@@ -120,10 +151,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      setCredits(data.credits ?? 0);
+      setLocalCredits(data.credits ?? 0);
     } catch (err: any) {
       console.error("Error fetching credits:", err.message);
     }
+  };
+
+  // --- Local credit manipulation (updates header instantly) ---
+  const addCredits = (amount: number) => {
+    const current = getLocalCredits();
+    setLocalCredits(current + amount);
+  };
+
+  const deductCredits = (amount: number) => {
+    const current = getLocalCredits();
+    setLocalCredits(Math.max(0, current - amount));
   };
 
   const signIn = async (
@@ -200,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    sessionStorage.removeItem("eromusa-credits");
     setCredits(0);
   };
 
@@ -214,46 +257,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // --- Supabase Realtime: Escuta mudanças na coluna credits do usuário logado ---
+  // --- Supabase Realtime: REMOVIDO PARA EVITAR CONGELAMENTO ---
+  // O saldo agora é atualizado apenas via fetchCredits manual ou ações do usuário
   useEffect(() => {
-    if (!user) {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        channelRef.current = null;
-      }
-      return;
-    }
-
-    console.log("[Realtime] Initializing channel for user:", user.id);
-
-    const channel = supabase
-      .channel(`user_credits_${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "users",
-          filter: `id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newCredits = payload.new.credits;
-          console.log("[Realtime] Credits update received:", newCredits);
-          setCredits(newCredits);
-        }
-      )
-      .subscribe((status) => {
-        console.log("[Realtime] Subscription status:", status);
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        channelRef.current = null;
-      }
-    };
+    // Logica de Realtime removida para garantir estabilidade do lançamento
   }, [user]);
 
   // --- Polling na visibilidade da aba (fallback para quando o usuário volta do checkout) ---
@@ -302,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, credits, loading, signIn, signUp, signInWithGoogle, signInWithGithub, signInWithDiscord, signInWithApple, signOut, refreshCredits, reconcilePendingPayments }}
+      value={{ user, session, credits, loading, signIn, signUp, signInWithGoogle, signInWithGithub, signInWithDiscord, signInWithApple, signOut, refreshCredits, reconcilePendingPayments, addCredits, deductCredits }}
     >
       {children}
     </AuthContext.Provider>

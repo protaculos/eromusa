@@ -95,7 +95,7 @@ function PricingContent() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
-  const { user, refreshCredits } = useAuth();
+  const { user, refreshCredits, addCredits } = useAuth();
 
   // Handle return from payment
   useEffect(() => {
@@ -125,6 +125,10 @@ function PricingContent() {
       const data = await response.json();
 
       if (response.ok && data.status === "completed") {
+        // Add credits locally for instant UI update
+        if (selectedPlan) {
+          addCredits(selectedPlan.creditsValue);
+        }
         await refreshCredits();
         setPaymentSuccess(true);
       } else if (data.status === "failed") {
