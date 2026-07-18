@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import LoginModal from "@/components/LoginModal";
 
 interface Plan {
@@ -92,9 +93,11 @@ function PricingContent() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [waitingPayment, setWaitingPayment] = useState(false);
   const { user, refreshCredits, addCredits } = useAuth();
 
   // Handle return from payment
@@ -112,6 +115,83 @@ function PricingContent() {
       setShowPaymentModal(true);
     }
   }, [user, selectedPlan, showPaymentModal, loginOpen]);
+
+  const handlePaymentMethod = async () => {
+    if (!selectedPlan || !user) return;
+
+    setPaymentLoading(true);
+    setPaymentError(null);
+
+    try {
+      // Get auth token from session
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch("/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan_id: selectedPlan.id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create payment");
+      }
+
+      if (data.checkout_url) {
+        sessionStorage.setItem("pending_payment_id", data.payment_id);
+        sessionStorage.setItem("pending_internal_id", data.internal_id);
+
+        // Abre em nova aba em vez de redirecionar
+        const newWindow = window.open(data.checkout_url, "_blank");
+        if (newWindow) {
+          setWaitingPayment(true);
+          setShowPaymentModal(false);
+          setPaymentLoading(false);
+        } else {
+          // Popup bloqueado — fallback: redireciona
+          window.location.href = data.checkout_url;
+        }
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      setPaymentError(error instanceof Error ? error.message : "Payment failed. Please try again.");
+      setPaymentLoading(false);
+    }
+  };
+
+  // Detecta quando o usuário volta da aba de pagamento
+  useEffect(() => {
+    if (!waitingPayment) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const internalId = sessionStorage.getItem("pending_internal_id");
+        const vexutopiaId = sessionStorage.getItem("pending_payment_id");
+        const paymentId = internalId || vexutopiaId;
+
+        if (paymentId) {
+          verifyPayment(paymentId);
+          sessionStorage.removeItem("pending_payment_id");
+          sessionStorage.removeItem("pending_internal_id");
+          setWaitingPayment(false);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [waitingPayment]);
 
   const verifyPayment = async (paymentId: string, attempt: number = 1) => {
     setVerifyingPayment(true);
@@ -193,6 +273,22 @@ function PricingContent() {
               <span className="font-semibold">Verifying Payment...</span>
             </div>
             <p className="text-sm text-text-secondary">Please wait while we confirm your payment.</p>
+          </div>
+        )}
+
+        {/* Waiting for Payment */}
+        {waitingPayment && (
+          <div className="mb-8 p-4 rounded-xl bg-card border border-border text-center">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <svg className="w-5 h-5 animate-spin text-accent-orange" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="font-semibold text-white">Waiting for Payment...</span>
+            </div>
+            <p className="text-sm text-text-secondary">
+              Complete the payment in the new tab. This page will update automatically when you return.
+            </p>
           </div>
         )}
 
@@ -306,14 +402,14 @@ function PricingContent() {
           </div>
         </div>
 
-        {/* Payment Modal */}
+        {/* Payment Method Modal */}
         {showPaymentModal && selectedPlan && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-white">Complete Payment</h3>
+                <h3 className="text-xl font-semibold text-white">Select Payment Method</h3>
                 <button
-                  onClick={() => { setShowPaymentModal(false); setSelectedPlan(null); }}
+                  onClick={() => { setShowPaymentModal(false); setSelectedPlan(null); setPaymentError(null); }}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -342,8 +438,62 @@ function PricingContent() {
                 </div>
               </div>
 
-              <p className="text-center text-text-secondary text-sm">
-                Payment processing will be available soon.
+              <div className="space-y-3">
+                <button
+                  onClick={handlePaymentMethod}
+                  disabled={paymentLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-background hover:bg-border/50 border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="2" y="5" width="20" height="14" rx="2" strokeWidth={1.5}/>
+                    <path d="M2 10h20" strokeWidth={1.5}/>
+                    <path d="M6 15h4" strokeWidth={1.5} strokeLinecap="round"/>
+                  </svg>
+                  <div className="text-left">
+                    <div className="text-white font-medium">Credit/Debit Card</div>
+                    <div className="text-text-secondary text-sm">Visa, Mastercard, Amex, and more</div>
+                  </div>
+                  {paymentLoading ? (
+                    <svg className="w-5 h-5 text-text-secondary ml-auto animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-text-secondary ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                    </svg>
+                  )}
+                </button>
+
+                <button
+                  onClick={handlePaymentMethod}
+                  disabled={paymentLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-background hover:bg-border/50 border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-10 h-10 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#1a1a2e"/>
+                    <path d="M12 6v2m0 8v2m-3-6h5.5a1.5 1.5 0 010 3H10m2 0h.5a1.5 1.5 0 000-3H11" stroke="#FFD700" strokeWidth={1.5} strokeLinecap="round"/>
+                    <circle cx="12" cy="12" r="9" stroke="#FFD700" strokeWidth={1} fill="none"/>
+                  </svg>
+                  <div className="text-left">
+                    <div className="text-white font-medium">Cryptocurrency</div>
+                    <div className="text-text-secondary text-sm">BTC, ETH, USDT, and more</div>
+                  </div>
+                  {paymentLoading ? (
+                    <svg className="w-5 h-5 text-text-secondary ml-auto animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-text-secondary ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              <p className="mt-4 text-center text-text-secondary text-xs">
+                Secured by Vexutopia. Your payment information is encrypted.
               </p>
             </div>
           </div>
