@@ -21,15 +21,15 @@ export async function GET(req: NextRequest) {
     }
   );
 
+  const { searchParams } = new URL(req.url);
+  const paymentId = searchParams.get("payment_id");
+
+  if (!paymentId) {
+    return NextResponse.json({ error: "Missing payment_id" }, { status: 400 });
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const paymentId = searchParams.get("payment_id");
-
-    if (!paymentId) {
-      return NextResponse.json({ error: "Missing payment_id" }, { status: 400 });
-    }
-
-    // Find payment by internal ID or Vexutopia ID (using admin client)
+    // Try to find payment by internal ID first, then by vexutopia_id
     let localPayment = await getPaymentById(paymentId, supabaseAdmin);
     if (!localPayment) {
       localPayment = await getPaymentByVexutopiaId(paymentId, supabaseAdmin);
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    // Already completed - return cached
+    // If already completed, return immediately
     if (localPayment.status === "completed") {
       return NextResponse.json({
         id: localPayment.id,
@@ -47,39 +47,21 @@ export async function GET(req: NextRequest) {
         status: "completed",
         amount: localPayment.amount,
         credits: localPayment.credits,
-        already_processed: true,
       });
     }
 
-    const apiKey = process.env.VEXUTOOPIA_API_KEY;
-    if (!apiKey) {
+    // Check status with Vexutopia
+    const vexApiKey = process.env.VEXUTOOPIA_API_KEY;
+    if (!vexApiKey) {
       return NextResponse.json({ error: "Service not configured" }, { status: 500 });
     }
+    const vexPayment = await getPayment(vexApiKey, localPayment.vexutopia_id);
 
-    // Check status from Vexutopia
-    const vexPayment = await getPayment(apiKey, localPayment.vexutopia_id);
-
-    // Update status based on Vexutopia response
-    if (vexPayment.status === "completed" && localPayment.status === "pending") {
-      // Get user and add credits (using admin client)
-      const { data: userData } = await supabaseAdmin
-        .from("users")
-        .select("credits")
-        .eq("id", localPayment.user_id)
-        .single();
-
-      if (userData) {
-        const newCredits = (userData.credits || 0) + localPayment.credits;
-
-        await supabaseAdmin
-          .from("users")
-          .update({ credits: newCredits })
-          .eq("id", localPayment.user_id);
-      }
-
+    if (vexPayment.status === "completed") {
+      // Credits already added by webhook, just mark as completed
       await completePayment(localPayment.vexutopia_id, supabaseAdmin);
-    } else if (vexPayment.status === "failed" && localPayment.status === "pending") {
-      await updatePaymentInfo(localPayment.vexutopia_id, { status: "failed" }, supabaseAdmin);
+    } else if (vexPayment.status === "failed" || vexPayment.status === "refunded") {
+      await updatePaymentInfo(localPayment.vexutopia_id, { status: vexPayment.status }, supabaseAdmin);
     } else if (vexPayment.payment_method) {
       await updatePaymentInfo(localPayment.vexutopia_id, { payment_method: vexPayment.payment_method }, supabaseAdmin);
     }

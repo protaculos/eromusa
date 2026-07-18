@@ -76,6 +76,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // Check for success status in URL to trigger immediate credit refresh
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("status") === "success") {
+        (async () => {
+          if (session?.user) {
+            await fetchCredits(session.user.id);
+          } else {
+            const { data: currentSession } = await supabase.auth.getSession();
+            if (currentSession?.session?.user) {
+              await fetchCredits(currentSession.session.user.id);
+            }
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })();
+      }
+    }
+
     return () => listener?.subscription.unsubscribe();
   }, []);
 
@@ -184,16 +202,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshCredits = async () => {
-    const userId = user?.id;
-    if (userId) {
-      await fetchCredits(userId);
-    } else {
+    try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await fetchCredits(session.user.id);
       }
+    } catch (err) {
+      console.error("Error refreshing credits:", err);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      // Refresh credits every 30 seconds to keep balance updated
+      const interval = setInterval(refreshCredits, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, refreshCredits]);
 
   // Reconcile pending payments when user logs in or on app load
   const reconcilePendingPayments = async () => {

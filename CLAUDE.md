@@ -330,58 +330,23 @@ CREATE TABLE video_jobs (
 
 ---
 
-## API Vexutopia (Pagamentos)
+## Sistema de Créditos (Reconstruído - Julho 2026)
 
-### Configuração
-- **Base URL**: `https://vexutopia.com/api/v1`
-- **Auth**: Header `X-API-Key`
-- **Chave**: `VEXUTOOPIA_API_KEY` (env)
+O sistema de créditos opera sob o princípio de **Single Source of Truth (SSOT)**: o banco de dados Supabase é a única fonte de verdade. Não existem bônus automáticos em memória ou criação de perfis com créditos durante consultas.
 
-### Planos de Preço
-| Plano | Preço | Créditos |
-|-------|-------|----------|
-| Basic | $9.99 | 300 |
-| Plus | $29.99 | 1500 |
-| Prime | $49.99 | 3000 |
+### Fluxo de Operações
+1. **Consulta**: `Frontend` $\rightarrow$ `AuthContext` $\rightarrow$ `/api/user/credits` $\rightarrow$ `Supabase (users.credits)` $\rightarrow$ `UI`.
+2. **Soma (Compra)**: `Vexutopia Webhook` $\rightarrow$ `/api/webhooks/vexutopia` $\rightarrow$ `Lê saldo atual` $\rightarrow$ `Soma créditos comprados` $\rightarrow$ `Update Supabase`.
+3. **Dedução (Uso)**: `VideoCreateModal` $\rightarrow$ `/api/video-credits/deduct` $\rightarrow$ `Valida saldo` $\rightarrow$ `Subtrai custo` $\rightarrow$ `Update Supabase`.
 
-### Fluxo de Pagamento (com banco de dados)
-1. Cliente seleciona plano na Pricing page
-2. POST `/api/payments` → cria payment na Vexutopia
-3. Salva registro na tabela `payments` do Supabase (status: pending)
-4. Redireciona para `checkout_url` da Vexutopia
-5. Cliente paga no checkout
-6. Cliente volta ao site
-7. GET `/api/payments/verify?payment_id=xxx` verifica status (polling)
-8. Se completo: atualiza status + adiciona créditos ao usuário na tabela `users`
+### Endpoints de Créditos
+- `GET /api/user/credits`: Retorna o saldo exato do usuário. Não cria perfis.
+- `POST /api/video-credits/deduct`: Dedução segura com validação de saldo insuficiente.
+- `POST /api/webhooks/vexutopia`: Processa pagamentos e soma créditos ao saldo real.
 
-### Tabela payments (Supabase)
-```sql
-CREATE TABLE payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vexutopia_id TEXT UNIQUE NOT NULL,  -- ID do Vexutopia (tx_xxx)
-  user_id UUID REFERENCES auth.users NOT NULL,
-  plan_id TEXT NOT NULL,
-  plan_name TEXT NOT NULL,
-  amount DECIMAL(10, 2) NOT NULL,
-  credits INTEGER NOT NULL,
-  status TEXT DEFAULT 'pending',
-  payment_method TEXT,
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
--- IMPORTANTE: Desativar RLS para funcionar corretamente
-ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
-```
+---
 
-### Endpoints da API de Pagamentos
-- `POST /api/payments` - Cria payment com Vexutopia
-- `GET /api/payments/verify?payment_id=xxx` - Verifica status do payment
-
-### Eventos de Webhook
-- `payment.completed` → Adiciona créditos ao usuário
-- `payment.failed` → Log do erro
-- `payment.refunded` → Opcional: deduzir créditos
+## Variáveis de Ambiente
 
 ---
 
