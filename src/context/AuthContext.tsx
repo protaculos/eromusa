@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -213,18 +213,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // --- Supabase Realtime: escuta mudanças na coluna credits do usuário logado ---
+  // --- Supabase Realtime: Escuta mudanças na coluna credits do usuário logado ---
   useEffect(() => {
-    // Limpa canal anterior se existir
-    if (channelRef.current) {
-      channelRef.current.unsubscribe();
-      channelRef.current = null;
+    if (!user) {
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
+      return;
     }
 
-    if (!user) return;
+    console.log("[Realtime] Initializing channel for user:", user.id);
 
     const channel = supabase
-      .channel("credits-realtime")
+      .channel(`user_credits_${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -234,19 +236,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          const newCredits = (payload.new as { credits?: number }).credits;
-          if (typeof newCredits === "number") {
-            setCredits(newCredits);
-          }
+          const newCredits = payload.new.credits;
+          console.log("[Realtime] Credits update received:", newCredits);
+          setCredits(newCredits);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[Realtime] Subscription status:", status);
+      });
 
     channelRef.current = channel;
 
     return () => {
-      channel.unsubscribe();
-      channelRef.current = null;
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
     };
   }, [user]);
 

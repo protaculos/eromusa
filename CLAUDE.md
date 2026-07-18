@@ -334,10 +334,11 @@ CREATE TABLE video_jobs (
 
 O sistema de créditos opera sob o princípio de **Single Source of Truth (SSOT)**: o banco de dados Supabase é a única fonte de verdade. Não existem bônus automáticos em memória ou criação de perfis com créditos durante consultas.
 
-### Fluxo de Operações
-1. **Consulta**: `Frontend` $\rightarrow$ `AuthContext` $\rightarrow$ `/api/user/credits` $\rightarrow$ `Supabase (users.credits)` $\rightarrow$ `UI`.
-2. **Soma (Compra)**: `Vexutopia Webhook` $\rightarrow$ `/api/webhooks/vexutopia` $\rightarrow$ `Lê saldo atual` $\rightarrow$ `Soma créditos comprados` $\rightarrow$ `Update Supabase`.
-3. **Dedução (Uso)**: `VideoCreateModal` $\rightarrow$ `/api/video-credits/deduct` $\rightarrow$ `Valida saldo` $\rightarrow$ `Subtrai custo` $\rightarrow$ `Update Supabase`.
+### Fluxo de Operações (Sincronização Realtime)
+1. **Sincronização**: `Supabase (DB)` $\rightarrow$ `Realtime Channel` $\rightarrow$ `AuthContext` $\rightarrow$ `UI` (Atualização instantânea via WebSocket).
+2. **Consulta Inicial**: `Frontend` $\rightarrow$ `AuthContext` $\rightarrow$ `/api/user/credits` $\rightarrow$ `Supabase (users.credits)` $\rightarrow$ `UI`.
+3. **Soma (Compra)**: `Vexutopia Webhook` $\rightarrow$ `/api/webhooks/vexutopia` $\rightarrow$ `Update Supabase` $\rightarrow$ `Gatilho Realtime` $\rightarrow$ `UI`.
+4. **Dedução (Uso)**: `VideoCreateModal` $\rightarrow$ `/api/video-credits/deduct` $\rightarrow$ `Update Supabase` $\rightarrow$ `Gatilho Realtime` $\rightarrow$ `UI`.
 
 ### Endpoints de Créditos
 - `GET /api/user/credits`: Retorna o saldo exato do usuário. Não cria perfis.
@@ -481,4 +482,4 @@ Após configurar o domínio no Vercel:
 
 ---
 
-*Última atualização: 15/07/2026*
+*Última atualização: 18/07/2026*
