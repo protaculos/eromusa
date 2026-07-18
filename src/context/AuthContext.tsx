@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -201,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCredits(0);
   };
 
-  const refreshCredits = async () => {
+  const refreshCredits = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -210,14 +211,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Error refreshing credits:", err);
     }
-  };
+  }, []);
 
+  // --- Supabase Realtime: escuta mudanças na coluna credits do usuário logado ---
   useEffect(() => {
-    if (user) {
-      // Refresh credits every 30 seconds to keep balance updated
-      const interval = setInterval(refreshCredits, 30000);
-      return () => clearInterval(interval);
+    // Limpa canal anterior se existir
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
     }
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel("credits-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newCredits = (payload.new as { credits?: number }).credits;
+          if (typeof newCredits === "number") {
+            setCredits(newCredits);
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      channel.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [user]);
+
+  // --- Polling na visibilidade da aba (fallback para quando o usuário volta do checkout) ---
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshCredits();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
   }, [user, refreshCredits]);
 
   // Reconcile pending payments when user logs in or on app load

@@ -113,10 +113,12 @@ function PricingContent() {
     }
   }, [user, selectedPlan, showPaymentModal, loginOpen]);
 
-  const verifyPayment = async (paymentId: string) => {
+  const verifyPayment = async (paymentId: string, attempt: number = 1) => {
     setVerifyingPayment(true);
     setPaymentSuccess(false);
     setPaymentError(null);
+
+    const MAX_ATTEMPTS = 30;
 
     try {
       const response = await fetch(`/api/payments/verify?payment_id=${paymentId}`);
@@ -128,8 +130,12 @@ function PricingContent() {
       } else if (data.status === "failed") {
         setPaymentError("Payment failed. Please try again.");
       } else if (data.status === "pending") {
-        setTimeout(() => verifyPayment(paymentId), 3000);
-        return;
+        if (attempt < MAX_ATTEMPTS) {
+          setTimeout(() => verifyPayment(paymentId, attempt + 1), 2000);
+          return;
+        } else {
+          setPaymentError("Payment is taking longer than expected. Your credits will be added automatically once confirmed. Please check back shortly.");
+        }
       } else {
         setPaymentError("Unable to verify payment. Contact support if credits weren't added.");
       }
