@@ -1,12 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 
 export function useRole() {
   const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+
+  // Crie o cliente Supabase com as variáveis de ambiente
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  )
 
   useEffect(() => {
     async function fetchRole() {

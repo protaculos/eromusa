@@ -5,6 +5,8 @@
  * API Base URL: https://vexutopia.com/api/v1
  */
 
+import * as CryptoJS from 'crypto-js'
+
 const VEXUTOPIA_BASE_URL = 'https://vexutopia.com/api/v1'
 
 interface VexutopiaPaymentRequest {
@@ -196,7 +198,7 @@ export async function resendWebhook(id: string): Promise<{ ok: boolean; transact
  * The signature is computed as: HMAC-SHA256(secret, `{timestamp}.{rawRequestBody}`)
  */
 export function verifyWebhookSignature(
-  rawBody: string | Buffer,
+  rawBody: string | any,
   signatureHeader: string,
   secret: string
 ): boolean {
@@ -224,21 +226,24 @@ export function verifyWebhookSignature(
   const bodyString = typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8')
   const payload = `${t}.${bodyString}`
 
-  // Node.js crypto
-  if (typeof crypto !== 'undefined' && crypto.createHmac) {
-    const expected = crypto
-      .createHmac('sha256', secret)
+  // Node.js crypto (server-side)
+  let expected: string
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV) {
+    // Node.js environment
+    const { createHmac, timingSafeEqual } = require('crypto')
+    expected = createHmac('sha256', secret)
       .update(payload)
       .digest('hex')
 
     // Constant-time comparison
     return expected.length === v1.length &&
-           crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
+           timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
   }
-
-  // Browser/edge runtime fallback (less secure)
-  // Note: In edge runtimes, use a proper HMAC implementation
-  return false
+  // CryptoJS fallback for browser/edge runtimes
+  else {
+    expected = CryptoJS.HmacSHA256(payload, secret).toString(CryptoJS.enc.Hex)
+    return expected === v1
+  }
 }
 
 export type {
