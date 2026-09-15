@@ -47,8 +47,8 @@ export default function GenderSelector() {
             href={tab.href}
             className={`flex items-center space-x-2 px-5 py-2.5 rounded-full border transition-all duration-200 ${
               isActive
-                ? 'bg-pink-500 text-white border-pink-500 shadow-lg shadow-pink-500/30 font-bold'
-                : 'bg-black/30 border-gray-700 text-gray-300 hover:bg-black/40 hover:text-white font-medium'
+                ? 'bg-[#2A2A2A] text-white font-bold border-gray-600 shadow-md'
+                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5 border-gray-700 font-medium'
             }`}
           >
             <span>{tab.icon}</span>
