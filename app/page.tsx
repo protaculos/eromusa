@@ -23,9 +23,6 @@ export default function Home() {
         </main>
       </div>
 
-      <div className="max-w-xl w-full mx-auto flex justify-center mb-8 px-4">
-        <GenerateButton />
-      </div>
     </div>
   )
 }
