@@ -14,19 +14,39 @@ export default function StyleSelector() {
 
   const { role, loading } = useRole()
 
+  // Função para lidar com o upload da imagem original
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log('Imagem enviada com sucesso:', data.url);
+        // Aqui você pode armazenar o URL da imagem em um estado ou usá-lo diretamente
+        // Por exemplo: setImageUrl(data.url)
+      } else {
+        console.error('Erro ao enviar imagem:', data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar imagem:', error);
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto mb-8 px-4">
       <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-4 mb-6">
         {/* MODAL ESQUERDA: Upload de Foto (Recebe a thumbnail do carrossel como fundo padrão) */}
         <ImageUpload
           currentCarouselImage={selectedMedia?.thumbUrl || ''}
-          onImageUpload={(file) => {
-            // Aqui você pode implementar a lógica para enviar a imagem original para a API
-            // Por exemplo:
-            // if (file) {
-            //   uploadImageToAPI(file)
-            // }
-          }}
+          onImageUpload={handleImageUpload}
         />
 
         {/* MODAL DIREITA: O vídeo selecionado no carrossel roda em loop aqui */}
