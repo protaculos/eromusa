@@ -15,21 +15,12 @@ interface CreditPackage {
 }
 
 const PACKAGES: CreditPackage[] = [
-  // Pacotes em Dólar (USD)
-  { id: 'usd9.90', credits: 300, price: 9.90, currency: 'USD' },
-  { id: 'usd29.90', credits: 1500, price: 29.90, currency: 'USD', popular: true },
-  { id: 'usd49.90', credits: 3000, price: 49.90, currency: 'USD' },
-
   // Pacotes em Real (BRL)
   { id: 'brl9.90', credits: 60, price: 9.90, currency: 'BRL' },
   { id: 'brl29.90', credits: 300, price: 29.90, currency: 'BRL', popular: true },
   { id: 'brl49.90', credits: 600, price: 49.90, currency: 'BRL' },
 ]
 
-const CURRENCIES = [
-  { code: 'BRL', symbol: 'R$', label: 'Real' },
-  { code: 'USD', symbol: '$', label: 'Dólar' },
-]
 
 const formatPrice = (n: number) =>
   n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -37,8 +28,6 @@ const formatPrice = (n: number) =>
 export default function CreditosPage() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null)
-  const [currencyCode, setCurrencyCode] = useState('BRL')
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const paymentSectionRef = useRef<HTMLDivElement>(null)
   const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -47,8 +36,7 @@ export default function CreditosPage() {
     [selectedPackage]
   )
 
-  const currency =
-    CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
+  const currency = { code: 'BRL', symbol: 'R$', label: 'Real' }
 
   const handleSelectPackage = (pkgId: string) => {
     setSelectedPackage(pkgId)
@@ -70,11 +58,6 @@ export default function CreditosPage() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Limpa o pacote selecionado ao mudar de moeda
-  useEffect(() => {
-    setSelectedPackage(null)
-    setSelectedPayment(null)
-  }, [currencyCode])
 
   const handleFinalize = async () => {
     if (!selectedPkg || !selectedPayment) return
@@ -190,51 +173,12 @@ export default function CreditosPage() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">
               <span className="block text-white opacity-90">COMPRE CRÉDITOS</span>
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#FD5FC2] via-pink-400 to-[#FD5FC2]">
-                COM DESCONTOS
+                COM FACILIDADE
               </span>
             </h1>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-16 h-1 bg-pink-500 rounded-full" />
           </div>
 
-          {/* SELETOR DE MOEDA / PAÍS */}
-          <div className="flex justify-end mb-4 relative">
-            <button
-              onClick={() => setCurrencyOpen((v) => !v)}
-              className="flex items-center gap-2 bg-[#141414] border border-gray-800 hover:border-gray-700 rounded-full px-4 py-2 text-xs font-bold text-gray-200 transition-colors"
-            >
-              <span className="text-base">🌐</span>
-              <span>{currency.label}</span>
-              <span className="text-gray-500">({currency.code})</span>
-              <svg
-                className={`w-3 h-3 text-gray-400 transition-transform ${currencyOpen ? 'rotate-180' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {currencyOpen && (
-              <div className="absolute right-0 top-12 z-30 w-56 bg-[#141414] border border-gray-800 rounded-2xl p-2 shadow-2xl shadow-black/60 max-h-64 overflow-y-auto text-left">
-                {CURRENCIES.map((c) => (
-                  <button
-                    key={c.code}
-                    onClick={() => {
-                      setCurrencyCode(c.code)
-                      setCurrencyOpen(false)
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${
-                      c.code === currencyCode
-                        ? 'bg-pink-500/15 text-pink-300'
-                        : 'text-gray-300 hover:bg-[#1f1f1f]'
-                    }`}
-                  >
-                    <span>{c.label}</span>
-                    <span className="text-gray-500">{c.code}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* PASSO 1: LISTA DE PACOTES DE CRÉDITOS */}
           <div className="mb-12 text-left">
@@ -246,7 +190,7 @@ export default function CreditosPage() {
             </div>
 
             <div className="bg-[#141414] border border-gray-800 rounded-3xl divide-y divide-gray-800 overflow-hidden">
-              {PACKAGES.filter(p => p.currency === currencyCode).map((pkg) => {
+              {PACKAGES.map((pkg) => {
                 const isSelected = selectedPackage === pkg.id
                 const perCredit = pkg.price / pkg.credits
                 return (
@@ -328,12 +272,12 @@ export default function CreditosPage() {
 
             <div className="relative rounded-3xl bg-[#141414] border border-gray-800 transition-all duration-300">
               <div className="p-4 md:p-5 space-y-3">
-                {/* PIX / Pagamentos Locais */}
+                {/* PIX */}
                 <PaymentOption
                   active={selectedPayment === 'pix'}
                   onClick={() => handlePaymentClick('pix')}
                   flag="🇧🇷"
-                  title="Pagamentos Locais / PIX"
+                  title="PIX"
                   subtitle="Aprovação instantânea"
                   tag="Recomendado"
                 />
@@ -343,8 +287,8 @@ export default function CreditosPage() {
                   active={selectedPayment === 'stars'}
                   onClick={() => handlePaymentClick('stars')}
                   icon={<TelegramIcon />}
-                  title="Telegram Stars"
-                  subtitle="Pagamento dentro do Telegram"
+                  title="Telegram"
+                  subtitle="Pagamento com cartão de crédito ou Stars"
                 />
 
                 {/* Criptomoeda */}
@@ -354,7 +298,6 @@ export default function CreditosPage() {
                   icon={<CryptoIcon />}
                   title="Criptomoeda"
                   subtitle="BTC, ETH, USDT e mais"
-                  discount="5% OFF"
                 />
               </div>
 
