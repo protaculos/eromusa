@@ -20,6 +20,12 @@ export default function StyleSelector() {
   const handleGenerateVideo = () => {
     if (!hasImage) {
       setShowAlert(true)
+
+      // Esconde o alerta automaticamente após 3 segundos
+      setTimeout(() => {
+        setShowAlert(false)
+      }, 3000)
+
       // Adiciona uma tremida no modal de upload de foto
       const uploadModal = document.querySelector('.relative.aspect-square.rounded-3xl') as HTMLElement
       if (uploadModal) {
@@ -104,8 +110,11 @@ export default function StyleSelector() {
       <div className="mb-6">
         <button
           onClick={handleGenerateVideo}
-          className="w-full py-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer"
+          className="w-full py-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer px-6"
         >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
           Gerar Vídeo
         </button>
       </div>
