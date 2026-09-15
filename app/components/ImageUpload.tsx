@@ -4,11 +4,13 @@ import React, { useState, useRef, useCallback } from 'react'
 
 interface ImageUploadProps {
   currentCarouselImage: string
+  onImageUpload?: (file: File | null) => void
 }
 
-export default function ImageUpload({ currentCarouselImage }: ImageUploadProps) {
+export default function ImageUpload({ currentCarouselImage, onImageUpload }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [originalFile, setOriginalFile] = useState<File | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -30,6 +32,10 @@ export default function ImageUpload({ currentCarouselImage }: ImageUploadProps) 
   }, [])
 
   const processFile = (file: File) => {
+    // Armazena a imagem original para envio
+    setOriginalFile(file)
+
+    // Processa a imagem para preview (1:1 com bordas pretas)
     const reader = new FileReader()
     reader.onload = (uploadEvent) => {
       const img = new Image()
@@ -62,6 +68,11 @@ export default function ImageUpload({ currentCarouselImage }: ImageUploadProps) 
         // Converte o canvas para base64 (formato 1:1 com bordas pretas e tamanho reduzido)
         const paddedImageData = canvas.toDataURL('image/jpeg', 0.9)
         setPreviewUrl(paddedImageData)
+
+        // Dispara callback para notificar que a imagem original está pronta para envio
+        if (onImageUpload) {
+          onImageUpload(file)
+        }
       }
       img.src = uploadEvent.target?.result as string
     }
@@ -93,8 +104,13 @@ export default function ImageUpload({ currentCarouselImage }: ImageUploadProps) 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
     setPreviewUrl(null)
+    setOriginalFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+    // Notifica que a imagem foi removida
+    if (onImageUpload) {
+      onImageUpload(null)
     }
   }
 
