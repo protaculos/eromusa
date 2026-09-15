@@ -1,11 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ImageUpload from './ImageUpload'
 import Carousel from './Carousel'
 import FilterSelector from './FilterSelector'
 import { useRole } from '../hooks/useRole'
 import AdminCarouselManager from './AdminCarouselManager'
+import { supabase } from '@/lib/supabase'
+import AuthModal from './AuthModal'
+import Link from 'next/link'
 
 export default function StyleSelector() {
   const [selectedStyle, setSelectedStyle] = useState('Anime')
@@ -13,8 +16,52 @@ export default function StyleSelector() {
   const [selectedMedia, setSelectedMedia] = useState<{ videoUrl: string; thumbUrl: string } | null>(null)
   const [hasImage, setHasImage] = useState<boolean>(false)
 
+  const [user, setUser] = useState<any>(null)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [modalMode, setModalMode] = useState<'login' | 'signup' | null>(null)
+
   const { role, loading } = useRole()
   const [showAlert, setShowAlert] = useState(false)
+  const [showInsufficientCreditsAlert, setShowInsufficientCreditsAlert] = useState(false)
+
+  // Verifica se o usuário está logado e busca os créditos
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchCredits(session.user.id)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchCredits(session.user.id)
+      } else {
+        setCredits(null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const fetchCredits = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', userId)
+        .single()
+
+      if (data) {
+        setCredits(data.credits)
+      }
+    } catch (error) {
+      console.error('Error fetching credits:', error)
+    }
+  }
 
   // Função para gerar vídeo
   const handleGenerateVideo = () => {
@@ -34,6 +81,18 @@ export default function StyleSelector() {
           uploadModal.classList.remove('animate-shake')
         }, 1000)
       }
+      return
+    }
+
+    // Verifica se o usuário está logado
+    if (!user) {
+      setModalMode('login')
+      return
+    }
+
+    // Verifica se o usuário tem créditos suficientes (30 créditos para gerar um vídeo)
+    if (credits && credits < 30) {
+      setShowInsufficientCreditsAlert(true)
       return
     }
 
@@ -107,15 +166,27 @@ export default function StyleSelector() {
       </div>
 
       {/* Botão Gerar Vídeo abaixo dos modais principais */}
-      <div className="mb-6">
+      <div className="mb-6 flex justify-center">
         <button
           onClick={handleGenerateVideo}
-          className="w-full py-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer px-6"
+          className="py-3 px-6 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Gerar Vídeo
+          {user ? (
+            <>
+              <span>Criar Vídeo</span>
+              <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span>30</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>Gerar Vídeo</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -148,6 +219,40 @@ export default function StyleSelector() {
       ) : null}
 
       <Carousel onImageSelect={setSelectedMedia} filter={selectedFilter} />
+
+      {/* Alerta de créditos insuficientes */}
+      {showInsufficientCreditsAlert && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#1A1A1A] border border-gray-800 rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-3">Créditos Insuficientes</h3>
+            <p className="text-gray-400 text-sm mb-6">Você precisa de 30 créditos para criar um vídeo.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowInsufficientCreditsAlert(false)}
+                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <Link
+                href="/creditos"
+                onClick={() => setShowInsufficientCreditsAlert(false)}
+                className="flex-1 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl transition text-sm font-medium"
+              >
+                Adquirir Créditos
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de autenticação */}
+      {modalMode && (
+        <AuthModal
+          isOpen={modalMode !== null}
+          onClose={() => setModalMode(null)}
+          mode={modalMode}
+        />
+      )}
     </div>
   )
 }
