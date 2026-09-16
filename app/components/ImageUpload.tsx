@@ -79,14 +79,80 @@ export default function ImageUpload({ currentCarouselImage, onImageUpload }: Ima
     reader.readAsDataURL(file)
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
 
+    // 1. Caso seja um arquivo arrastado do computador
     const files = e.dataTransfer.files
-    if (files && files[0]) {
-      processFile(files[0])
+    if (files && files.length > 0) {
+      const imageFile = files[0]
+      if (imageFile.type.startsWith('image/')) {
+        processFile(imageFile)
+        return
+      }
+    }
+
+    // 2. Caso seja uma imagem arrastada do navegador (HTML ou URL)
+    const htmlData = e.dataTransfer.getData('text/html')
+    let imageUrl = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+
+    // Se veio um bloco HTML (ex: <img src="...">), extrair o src
+    if (htmlData) {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(htmlData, 'text/html')
+      const img = doc.querySelector('img')
+      if (img && img.src) {
+        imageUrl = img.src
+      }
+    }
+
+    if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:image/'))) {
+      try {
+        // Se for um data URL (base64)
+        if (imageUrl.startsWith('data:image/')) {
+          const res = await fetch(imageUrl)
+          const blob = await res.blob()
+          const file = new File([blob], `dragged-image-${Date.now()}.png`, { type: blob.type || 'image/png' })
+          processFile(file)
+          return
+        }
+
+        // Se for uma URL externa, baixar como blob e converter em File
+        const response = await fetch(imageUrl, { mode: 'cors' }).catch(() => null)
+        if (response && response.ok) {
+          const blob = await response.blob()
+          const file = new File([blob], `dragged-image-${Date.now()}.png`, { type: blob.type || 'image/png' })
+          processFile(file)
+        } else {
+          // Se falhar o CORS direto, carregar via Image element usando canvas
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth || img.width
+            canvas.height = img.naturalHeight || img.height
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(img, 0, 0)
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  const file = new File([blob], `dragged-image-${Date.now()}.png`, { type: 'image/png' })
+                  processFile(file)
+                }
+              }, 'image/png')
+            }
+          }
+          img.onerror = () => {
+            alert('Não foi possível carregar a imagem arrastada devido a proteções do site de origem. Tente salvar a imagem no seu computador e enviar.')
+          }
+          img.src = imageUrl
+        }
+      } catch (err) {
+        console.error('Erro ao processar imagem arrastada:', err)
+        alert('Erro ao carregar imagem arrastada.')
+      }
     }
   }, [])
 

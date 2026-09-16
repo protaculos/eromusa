@@ -217,7 +217,7 @@ export default function CreditosPage() {
                     {/* Crédito + preço por crédito */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-semibold text-lg tracking-tight">
+                        <span className="text-white font-bold text-lg tracking-tight">
                           {pkg.credits.toLocaleString('pt-BR')} créditos
                         </span>
                         {pkg.popular && (
@@ -238,7 +238,7 @@ export default function CreditosPage() {
 
                     {/* Preço */}
                     <div className="text-right">
-                      <div className="text-white font-semibold text-lg md:text-xl tracking-tight whitespace-nowrap">
+                      <div className="text-white font-bold text-lg md:text-xl tracking-tight whitespace-nowrap">
                         {currency.symbol} {formatPrice(pkg.price)}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">

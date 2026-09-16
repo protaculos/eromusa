@@ -15,6 +15,8 @@ export default function StyleSelector() {
   const [selectedFilter, setSelectedFilter] = useState('Boquete')
   const [selectedMedia, setSelectedMedia] = useState<{ videoUrl: string; thumbUrl: string } | null>(null)
   const [hasImage, setHasImage] = useState<boolean>(false)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+  const [generating, setGenerating] = useState<boolean>(false)
 
   const [user, setUser] = useState<any>(null)
   const [credits, setCredits] = useState<number | null>(null)
@@ -64,8 +66,8 @@ export default function StyleSelector() {
   }
 
   // Função para gerar vídeo
-  const handleGenerateVideo = () => {
-    if (!hasImage) {
+  const handleGenerateVideo = async () => {
+    if (!hasImage || !uploadedImageUrl) {
       setShowAlert(true)
 
       // Esconde o alerta automaticamente após 3 segundos
@@ -91,17 +93,65 @@ export default function StyleSelector() {
     }
 
     // Verifica se o usuário tem créditos suficientes (30 créditos para gerar um vídeo)
-    if (credits && credits < 30) {
+    if (credits !== null && credits < 30) {
       setShowInsufficientCreditsAlert(true)
       return
     }
 
-    // Lógica para gerar vídeo (você pode implementar aqui)
-    alert('Gerando vídeo com a imagem selecionada!')
+    try {
+      setGenerating(true)
+
+      console.log('Iniciando requisição para /api/generate-video')
+      console.log('Dados:', {
+        imageUrl: uploadedImageUrl,
+        filter: selectedFilter,
+        userId: user.id
+      })
+
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl: uploadedImageUrl,
+          filter: selectedFilter,
+          userId: user.id
+        })
+      })
+
+      console.log('Status da resposta:', response.status)
+      const responseText = await response.text()
+      console.log('Texto bruto da resposta:', responseText)
+
+      const data = responseText ? JSON.parse(responseText) : {}
+      console.log('Dados da resposta:', data)
+
+      if (!response.ok) {
+        console.error('Erro na resposta da API:', data.error || 'Erro desconhecido')
+        throw new Error(data.error || 'Erro ao iniciar a geração do vídeo')
+      }
+
+      console.log('Vídeo criado com sucesso! Redirecionando para a galeria...', data)
+      // Redireciona o usuário para a galeria de forma 100% limpa
+      window.location.href = '/galeria'
+      console.log('Redirecionamento concluído')
+    } catch (error: any) {
+      console.error('Erro detalhado ao gerar vídeo:', error)
+      alert(error.message || 'Houve um erro ao processar seu pedido. Verifique os logs do console para mais detalhes.')
+      console.error('Stack trace:', error.stack)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   // Função para lidar com o upload da imagem original
   const handleImageUpload = async (file: File | null) => {
+    if (!file) {
+      setUploadedImageUrl(null)
+      setHasImage(false)
+      return
+    }
 
     try {
       const formData = new FormData();
@@ -113,15 +163,18 @@ export default function StyleSelector() {
       });
 
       const data = await response.json();
-      if (response.ok) {
+      if (response.ok && data.url) {
         console.log('Imagem enviada com sucesso:', data.url);
-        // Aqui você pode armazenar o URL da imagem em um estado ou usá-lo diretamente
-        // Por exemplo: setImageUrl(data.url)
+        setUploadedImageUrl(data.url)
+        setHasImage(true)
       } else {
-        console.error('Erro ao enviar imagem:', data.error);
+        console.error('Erro na resposta do upload:', data.error || 'Resposta inválida');
+        setHasImage(false)
+        alert('Falha ao enviar a imagem. Tente novamente.')
       }
     } catch (error) {
       console.error('Erro ao enviar imagem:', error);
+      alert('Erro ao processar imagem.')
     }
   };
 
@@ -169,9 +222,22 @@ export default function StyleSelector() {
       <div className="mb-6 flex justify-center">
         <button
           onClick={handleGenerateVideo}
-          className="py-4 px-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white cursor-pointer"
+          disabled={!hasImage || !user || generating}
+          className={`py-4 px-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+            !hasImage || !user || generating
+              ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white cursor-pointer'
+          }`}
         >
-          {user ? (
+          {generating ? (
+            <>
+              <svg className="animate-spin h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span>Gerando...</span>
+            </>
+          ) : user ? (
             <>
               <span>Criar Vídeo</span>
               <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
