@@ -169,7 +169,7 @@ export default function StyleSelector() {
       <div className="mb-6 flex justify-center">
         <button
           onClick={handleGenerateVideo}
-          className="py-3 px-6 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer"
+          className="py-4 px-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer"
         >
           {user ? (
             <>
