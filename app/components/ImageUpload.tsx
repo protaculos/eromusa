@@ -121,7 +121,7 @@ export default function ImageUpload({ currentCarouselImage, onImageUpload }: Ima
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`relative aspect-square rounded-3xl overflow-hidden border border-dashed cursor-pointer transition-all duration-300 group ${
+      className={`relative aspect-square rounded-3xl overflow-hidden border-[1.5px] border-dashed cursor-pointer transition-all duration-300 group ${
         isDragging ? 'border-pink-500 bg-pink-500/10' : 'border-gray-700/60 hover:border-pink-500/40'
       }`}
     >

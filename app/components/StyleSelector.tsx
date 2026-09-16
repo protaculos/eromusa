@@ -141,7 +141,7 @@ export default function StyleSelector() {
         <div
           onClick={() => setSelectedStyle('Anime')}
           className={`relative aspect-square rounded-3xl overflow-hidden border-2 cursor-pointer transition-all duration-300 group ${
-            selectedStyle === 'Anime' ? 'border-pink-500 shadow-xl shadow-pink-500/20' : 'border-gray-800 opacity-70 hover:opacity-100'
+            selectedStyle === 'Anime' ? 'border-pink-500' : 'border-gray-800 opacity-70 hover:opacity-100'
           }`}
         >
           <div className="w-full h-full bg-black relative flex flex-col justify-end p-0">
@@ -169,7 +169,7 @@ export default function StyleSelector() {
       <div className="mb-6 flex justify-center">
         <button
           onClick={handleGenerateVideo}
-          className="py-4 px-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white shadow-lg shadow-pink-500/30 cursor-pointer"
+          className="py-4 px-4 rounded-full font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-[#FD5FC2] hover:opacity-90 text-white cursor-pointer"
         >
           {user ? (
             <>

@@ -118,7 +118,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={() => setModalMode('signup')}
-                  className="px-5 py-1.5 text-sm bg-pink-500 text-white font-medium rounded-full hover:bg-pink-600 transition shadow-lg shadow-pink-500/30"
+                  className="px-5 py-1.5 text-sm bg-pink-500 text-white font-medium rounded-full hover:bg-pink-600 transition"
                 >
                   Criar Conta
                 </button>
