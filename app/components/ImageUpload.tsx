@@ -160,7 +160,7 @@ export default function ImageUpload({ currentCarouselImage, onImageUpload }: Ima
               className="absolute inset-0 bg-cover bg-center opacity-50"
               style={currentCarouselImage ? { backgroundImage: `url(${currentCarouselImage})` } : {}}
             />
-            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 bg-black/50" />
 
             <div className="flex flex-col items-center justify-center space-y-2 md:space-y-3 z-10 w-full px-1 p-6">
               <div className="w-10 h-10 md:w-16 md:h-16 rounded-2xl bg-pink-500/30 border border-pink-500/60 flex items-center justify-center text-pink-500 group-hover:scale-105 transition-transform shadow-lg shadow-pink-500/20">
