@@ -169,7 +169,7 @@ export default function ImageUpload({ currentCarouselImage, onImageUpload }: Ima
                 </svg>
               </div>
               <div className="w-full">
-                <p className="text-white font-black text-base md:text-xl tracking-tight whitespace-nowrap drop-shadow-md">Envie ou Arraste</p>
+                <p className="text-white font-bold text-base md:text-xl tracking-tight whitespace-nowrap drop-shadow-md">Envie ou Arraste</p>
                 <p className="text-gray-100 text-sm md:text-base font-medium mt-1 leading-tight drop-shadow">
                   Foto da galeria<br className="block md:hidden" /> <span className="md:whitespace-nowrap">ou navegador</span>
                 </p>
