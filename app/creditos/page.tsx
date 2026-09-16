@@ -221,7 +221,7 @@ export default function CreditosPage() {
                           {pkg.credits.toLocaleString('pt-BR')} créditos
                         </span>
                         {pkg.popular && (
-                          <span className="text-[10px] font-black tracking-widest uppercase text-pink-300 bg-pink-500/15 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-black tracking-widest uppercase text-pink-300 bg-pink-500/15 px-2 py-0.5 rounded-full md:inline hidden">
                             Popular
                           </span>
                         )}
