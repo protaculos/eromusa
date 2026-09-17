@@ -35,12 +35,12 @@ const TEST_VIDEOS = [
 ];
 
 export default function GaleriaPage() {
-  const [user, setUser] = useState(null)
-  const [videos, setVideos] = useState([])
+  const [user, setUser] = useState<any>(null)
+  const [videos, setVideos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modalVideo, setModalVideo] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null)
-  const videoRefs = useRef({})
+  const videoRefs = useRef<any>({})
 
   useEffect(() => {
     let isMounted = true;
@@ -126,7 +126,7 @@ export default function GaleriaPage() {
     };
   }, []);
 
-  const handleVideoClick = (video) => {
+  const handleVideoClick = (video: any) => {
     setModalVideo(video)
   }
 
