@@ -79,7 +79,7 @@ export default function CreditosPage() {
         },
         body: JSON.stringify({
           amount: selectedPkg.price,
-          currency: currencyCode,
+          currency: currency.code,
           credits: selectedPkg.credits,
           email: user.email,
           userId: user.id,

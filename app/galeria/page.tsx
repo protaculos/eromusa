@@ -38,7 +38,7 @@ export default function GaleriaPage() {
   const [user, setUser] = useState<any>(null)
   const [videos, setVideos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [modalVideo, setModalVideo] = useState(null)
+  const [modalVideo, setModalVideo] = useState<any>(null)
   const [confirmAction, setConfirmAction] = useState(null)
   const videoRefs = useRef<any>({})
 

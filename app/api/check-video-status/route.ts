@@ -139,7 +139,6 @@ export async function GET(request: Request) {
         const fallbackRes = await fetch('https://cdn.pixabay.com/video/2020/05/25/40149-425171736_tiny.mp4');
         const fallbackBuffer = Buffer.from(await fallbackRes.arrayBuffer());
         finalBuffer = fallbackBuffer;
-        finalVideoUrl = fallbackRes.url;
       }
 
       // Upload para Supabase Storage
@@ -182,7 +181,7 @@ export async function GET(request: Request) {
         .from('videos')
         .update({
           video_url: finalVideoUrl,
-          thumbnail_url: statusData.thumbnail_url || uploadedImageUrl
+          thumbnail_url: statusData.thumbnail_url || null
         })
         .eq('id', videoId)
         .select()

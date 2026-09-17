@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       .from(BUCKET_NAME)
       .list('', { limit: 1 })
 
-    if (bucketError && bucketError.code !== 'PBR_NOT_FOUND') {
+    if (bucketError && (bucketError as any).code !== 'PBR_NOT_FOUND') {
       console.error('Error checking bucket:', bucketError)
       return NextResponse.json({ error: 'Failed to check bucket' }, { status: 500 })
     }
