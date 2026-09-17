@@ -1,14 +1,40 @@
 "use client"
 
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import Header from '../components/Header'
+import GenderSelector from '../components/GenderSelector'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
+// Vídeos de teste para demonstração
+const TEST_VIDEOS = [
+ {
+ id: 'test-1',
+ user_id: 'test-user',
+ video_url: 'https://assets.mixkit.co/videos/preview/mixkit-woman-in-white-sweater-smiling-at-camera-4163-large.mp4',
+ thumbnail_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+ created_at: new Date().toISOString(),
+ is_expired: false
+ },
+ {
+ id: 'test-2',
+ user_id: 'test-user',
+ video_url: 'https://assets.mixkit.co/videos/preview/mixkit-young-woman-sunbathing-in-a-pool-40016-large.mp4',
+ thumbnail_url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&q=80',
+ created_at: new Date(Date.now() - 86400000).toISOString(),
+ is_expired: false
+ },
+ {
+ id: 'test-3',
+ user_id: 'test-user',
+ video_url: 'https://assets.mixkit.co/videos/preview/mixkit-woman-waving-goodbye-on-a-city-street-41636-large.mp4',
+ thumbnail_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
+ created_at: new Date(Date.now() - 172800000).toISOString(),
+ is_expired: false
+ }
+];
+
 export default function GaleriaPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  )
   const [user, setUser] = useState(null)
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,52 +43,88 @@ export default function GaleriaPage() {
   const videoRefs = useRef({})
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
+    let isMounted = true;
 
-    checkUser()
-
-    const fetchVideos = async () => {
-      if (!user) return
-
-      setLoading(true)
+    const initializeGallery = async () => {
       try {
-        const { data, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-
+        // Verifica o usuário e atualiza o estado
+        const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
-          console.error('Erro ao buscar vídeos:', error)
-        } else {
-          setVideos(data || [])
+          console.error('Erro ao verificar usuário:', error);
+          if (isMounted) {
+            setUser(null);
+            setVideos([]);
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setUser(user);
+        }
+
+        // Se o usuário estiver logado, busca os vídeos
+        if (user) {
+          const { data: videosData, error: videosError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (videosError) {
+            console.error('Erro ao buscar vídeos:', videosError);
+            if (isMounted) {
+              setVideos(TEST_VIDEOS); // Usar vídeos de teste se houver erro
+            }
+          } else if (isMounted) {
+            // Se encontrou vídeos, use. Se não tiver nenhum, use os de teste para demonstração!
+            setVideos(videosData && videosData.length > 0 ? videosData : TEST_VIDEOS);
+          }
+        } else if (isMounted) {
+          // Se não estiver logado, por enquanto mostra os de teste para você validar o layout!
+          setVideos(TEST_VIDEOS);
         }
       } catch (err) {
-        console.error('Erro ao buscar vídeos:', err)
+        console.error('Erro geral na galeria:', err);
+        if (isMounted) {
+          setUser(null);
+          setVideos(TEST_VIDEOS); // Test vídeos no fallback
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    }
+    };
 
+    initializeGallery();
+
+    // Escuta mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await checkUser()
-        if (session?.user) {
-          await fetchVideos()
+        if (session?.user && isMounted) {
+          setUser(session.user);
+          const { data, error } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false });
+          if (!error && isMounted) {
+            setVideos(data || []);
+          }
         }
       } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setVideos([])
+        if (isMounted) {
+          setUser(null);
+          setVideos([]);
+        }
       }
-    })
+    });
 
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleVideoClick = (video) => {
     setModalVideo(video)
@@ -72,7 +134,11 @@ export default function GaleriaPage() {
     <div className="min-h-screen bg-[#0D0D0D] text-white flex flex-col justify-between">
       <div>
 
+        <Header />
+
         <main className="max-w-xl mx-auto px-4 pt-8 pb-4 text-center">
+          <GenderSelector />
+
           <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-6">
             <div className="text-white">SUAS CRIAÇÕES</div>
             <div className="text-[#FD5FC2]">GALERIA DE VÍDEOS</div>
@@ -117,38 +183,37 @@ export default function GaleriaPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="relative w-full h-full">
-                      <div className="relative w-full h-full">
-                        <video
-                          ref={(el) => { videoRefs.current[video.id] = el }}
-                          src={video.video_url}
-                          muted
-                          loop
-                          playsInline
-                          className="absolute inset-0 w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('Erro ao carregar vídeo no grid:', e, video.video_url)
-                          }}
-                        />
-                        <img
-                          src={video.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          style={{ backgroundColor: 'black', zIndex: 0 }}
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-                          }}
-                        />
-                      </div>
-                      <img
-                        src={video.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                    <div className="relative w-full h-full" onClick={() => handleVideoClick(video)}>
+                      <video
+                        ref={(el) => { videoRefs.current[video.id] = el }}
+                        src={video.video_url}
+                        poster={video.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                        muted
+                        loop
+                        playsInline
+                        autoPlay
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ backgroundColor: 'black', zIndex: 0 }}
                         onError={(e) => {
-                          e.currentTarget.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+                          console.error('Erro ao carregar vídeo no grid:', e, video.video_url);
+                          if (!video.video_url || video.video_url.startsWith('processing')) {
+                            return (
+                              <div className="relative w-full h-full">
+                                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${video.thumbnail_url}')` }} />
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-3 text-center">
+                                  <span className="text-[13px] font-bold text-white tracking-wide leading-tight mb-1">
+                                    Vídeo indisponível
+                                  </span>
+                                  <span className="text-[10px] text-gray-300 leading-tight">
+                                    Tente novamente mais tarde
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
                         }}
                       />
                       {video.is_expired && (
-                        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
+                        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 pointer-events-none">
                           <span className="text-white font-bold text-sm">EXPIRADO</span>
                         </div>
                       )}
@@ -169,39 +234,40 @@ export default function GaleriaPage() {
             }}
           >
             <div
-              className="relative w-full max-w-4xl max-h-[90vh]"
+              className="relative w-full max-w-4xl max-h-[90vh] bg-black rounded-lg overflow-hidden flex items-center justify-center p-0 m-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative w-full h-full">
+              <div className="relative w-full h-full flex items-center justify-center">
                 <video
                   id={`modal-video-${modalVideo.id}`}
                   src={modalVideo.video_url}
-                  muted
+                  poster={modalVideo.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
                   controls
-                  className="w-full h-full object-cover"
+                  playsInline
+                  autoPlay
+                  className="max-w-full max-h-[85vh] object-contain"
                   onError={(e) => {
-                    console.error('Erro ao carregar vídeo:', e, modalVideo.video_url)
-                  }}
-                />
-                <img
-                  src={modalVideo.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ backgroundColor: 'black', zIndex: 0 }}
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+                    console.error('Erro ao carregar vídeo:', e, modalVideo.video_url);
+                          if (!modalVideo.video_url || modalVideo.video_url.startsWith('processing')) {
+                            return (
+                              <div className="relative w-full h-full">
+                                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${modalVideo.thumbnail_url}')` }} />
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-3 text-center">
+                                  <span className="text-[13px] font-bold text-white tracking-wide leading-tight mb-1">
+                                    Vídeo indisponível
+                                  </span>
+                                  <span className="text-[10px] text-gray-300 leading-tight">
+                                    Tente novamente mais tarde
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
                   }}
                 />
               </div>
-              <img
-                src={modalVideo.thumbnail_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ backgroundColor: 'black', zIndex: 0 }}
-                onError={(e) => {
-                  e.currentTarget.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-                }}
-              />
               {modalVideo.is_expired && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 pointer-events-none">
                   <span className="text-white font-bold text-2xl">EXPIRADO</span>
                 </div>
               )}
